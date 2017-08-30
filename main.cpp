@@ -17,12 +17,10 @@
  */
 
 #include "Ui.hpp"
-#include "Config.hpp"
 #include "BastetBlockChooser.hpp"
 #include <boost/assign.hpp>
 
 //DBG
-#include <iostream>
 #include <boost/format.hpp>
 
 using namespace Bastet;
@@ -31,38 +29,64 @@ using namespace boost;
 using namespace boost::assign;
 
 
-int main(int argc, char **argv){
-  Ui ui;
-  while(1){
-    
-    int choice=ui.MenuDialog(list_of("Play! (normal version)")("Play! (harder version)")("View highscores")("Customize keys")("Quit"));
-    switch(choice){
-    case 0:{
-      //ui.ChooseLevel();
-      BastetBlockChooser bc;
-      ui.Play(&bc);
-      ui.HandleHighScores(difficulty_normal);
-      ui.ShowHighScores(difficulty_normal);
+int main(int argc, char **argv)
+{
+    Ui ui;
+    JsonSocket *sock = nullptr;
+    if (argc >= 2)
+    {
+        int speed = static_cast<int>(strtol(argv[1], nullptr, 10));
+        ui.SetSpeed(speed);
     }
-      break;
-    case 1:{
-      //ui.ChooseLevel();
-      NoPreviewBlockChooser bc;
-      ui.Play(&bc);
-      ui.HandleHighScores(difficulty_hard);
-      ui.ShowHighScores(difficulty_hard);
+    if (argc >= 3)
+    {
+        unsigned long port = strtoul(argv[2], nullptr, 10);
+        ui.MessageDialogNoWait(string("Connect to port ") += argv[2]);
+        sock = new JsonSocket(static_cast<uint16_t>(port));
+        ui.SetSocket(sock);
     }
-      break;
-    case 2:
-      ui.ShowHighScores(difficulty_normal);
-      ui.ShowHighScores(difficulty_hard);
-      break;
-    case 3:
-      ui.CustomizeKeys();
-      break;
-    case 4:
-      exit(0);
-      break;
+
+    while (true)
+    {
+
+        int choice = ui.MenuDialog(
+                list_of("Play! (normal version)")("Play! (harder version)")("View highscores")("Customize keys")(
+                        "Quit"));
+        switch (choice)
+        {
+            case 0:
+            {
+                //ui.ChooseLevel();
+                BastetBlockChooser bc;
+                ui.Play(&bc);
+                ui.HandleHighScores(difficulty_normal);
+                ui.ShowHighScores(difficulty_normal);
+            }
+                break;
+            case 1:
+            {
+                //ui.ChooseLevel();
+                NoPreviewBlockChooser bc;
+                ui.Play(&bc);
+                ui.HandleHighScores(difficulty_hard);
+                ui.ShowHighScores(difficulty_hard);
+            }
+                break;
+            case 2:
+                ui.ShowHighScores(difficulty_normal);
+                ui.ShowHighScores(difficulty_hard);
+                break;
+            case 3:
+                ui.CustomizeKeys();
+                break;
+            case 4:
+                if (sock != nullptr)
+                    delete sock;
+                exit(0);
+                break;
+            default:
+                continue;
+                break;
+        }
     }
-  }
 }

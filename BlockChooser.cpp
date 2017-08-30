@@ -18,25 +18,28 @@
 
 #include "BlockChooser.hpp"
 
-#include <cstdlib> //random
+namespace Bastet
+{
 
-namespace Bastet{
+    BlockChooser::BlockChooser() {}
 
-  BlockChooser::BlockChooser(){}
-  BlockChooser::~BlockChooser(){}
+    BlockChooser::~BlockChooser() {}
 
-  RandomBlockChooser::RandomBlockChooser(){}
-  RandomBlockChooser::~RandomBlockChooser(){}
-  
-  Queue RandomBlockChooser::GetStartingQueue(){
-    Queue q;
-    q.push_back(BlockType(random()%nBlockTypes));
-    q.push_back(BlockType(random()%nBlockTypes));
-    return q;
-  }
-  
-  BlockType RandomBlockChooser::GetNext(const Well *well, const Queue &q){
-    return BlockType(random()%nBlockTypes);
-  }
-  
+    RandomBlockChooser::RandomBlockChooser() {}
+
+    RandomBlockChooser::~RandomBlockChooser() {}
+
+    Queue RandomBlockChooser::GetStartingQueue()
+    {
+        Queue q;
+        q.push_back(BlockType(random() % nBlockTypes));
+        q.push_back(BlockType(random() % nBlockTypes));
+        return q;
+    }
+
+    BlockType RandomBlockChooser::GetNext(const Well *well, const Queue &q)
+    {
+        return BlockType(random() % nBlockTypes);
+    }
+
 }

@@ -27,85 +27,112 @@
 #include <set>
 #include <boost/functional/hash.hpp>
 
-namespace Bastet{
+namespace Bastet
+{
 
-  static const long GameOverScore=-1000; //bogus score assigned to combinations which cause game over
-  
+    static const long GameOverScore = -1000; //bogus score assigned to combinations which cause game over
+
 //  declared in Well.hpp
-  long Evaluate(const Well *w, int extralines=0); //assigns a score to a position w + a number of extra lines deleted while getting there
+    long Evaluate(const Well *w,
+                  int extralines = 0); //assigns a score to a position w + a number of extra lines deleted while getting there
 
-  typedef BlockPosition Vertex;
+    typedef BlockPosition Vertex;
 
-  //generic visitor that "does something" with a possible drop position
-  class WellVisitor{
-  public:
-    WellVisitor(){}
-    virtual void Visit(BlockType b, const Well *well, Vertex v){};
-    virtual ~WellVisitor(){};
-  };
+    //generic visitor that "does something" with a possible drop position
+    class WellVisitor
+    {
+    public:
+        WellVisitor() {}
 
-  //for each block type, drops it (via a BestScoreVisitor) and sees which block reaches the best score along the drop positions
-  class RecursiveVisitor: public WellVisitor{
-  public:
-    RecursiveVisitor();
-    virtual ~RecursiveVisitor();
-    virtual void Visit(BlockType b, const Well *well, Vertex v);
-    const boost::array<long,7> &GetScores() const{return _scores;}
-  private:
-    typedef boost::array<long,7> ScoresList;
-    ScoresList _scores;
-  };
+        virtual void Visit(BlockType b, const Well *well, Vertex v) {};
 
-  //returns the max score over all drop positions
-  class BestScoreVisitor: public WellVisitor{
-  public:
-    explicit BestScoreVisitor(int bonusLines=0);
-    virtual ~BestScoreVisitor();
-    virtual void Visit(BlockType b, const Well *well, Vertex v);
-    long GetScore() const{return _score;}
-  private:
-    long _score;
-    int _bonusLines;
-  };
+        virtual ~WellVisitor() {};
+    };
 
-  /**
-   * Tries to drop a block in all possible positions, and invokes the visitor on each one
-   */
-  class Searcher{
-  public:
-    Searcher(BlockType b, const Well *well, Vertex v, WellVisitor *visitor);
-  private:
-    std::tr1::unordered_set<Vertex> _visited;
-    //std::set<Vertex> _visited; ^^ the above is more efficient, we need to do many inserts
-    BlockType _block;
-    const Well *_well;
-    WellVisitor *_visitor;
-    void DFSVisit(Vertex v);
-  };
+    //for each block type, drops it (via a BestScoreVisitor) and sees which block reaches the best score along the drop positions
+    class RecursiveVisitor : public WellVisitor
+    {
+    public:
+        RecursiveVisitor();
 
-  class BastetBlockChooser: public BlockChooser{
-  public:
-    BastetBlockChooser();
-    virtual ~BastetBlockChooser();
-    virtual Queue GetStartingQueue();
-    virtual BlockType GetNext(const Well *well, const Queue &q);
+        virtual ~RecursiveVisitor();
+
+        virtual void Visit(BlockType b, const Well *well, Vertex v);
+
+        const boost::array<long, 7> &GetScores() const { return _scores; }
+
+    private:
+        typedef boost::array<long, 7> ScoresList;
+        ScoresList _scores;
+    };
+
+    //returns the max score over all drop positions
+    class BestScoreVisitor : public WellVisitor
+    {
+    public:
+        explicit BestScoreVisitor(int bonusLines = 0);
+
+        virtual ~BestScoreVisitor();
+
+        virtual void Visit(BlockType b, const Well *well, Vertex v);
+
+        long GetScore() const { return _score; }
+
+    private:
+        long _score;
+        int _bonusLines;
+    };
+
     /**
-     * computes "scores" of the candidate next blocks by dropping them in all possible positions and choosing the one that has the least max_(drop positions) Evaluate(well)
+     * Tries to drop a block in all possible positions, and invokes the visitor on each one
      */
-    boost::array<long,7> ComputeMainScores(const Well *well, BlockType currentBlock);
-    
-  private:
-    
-  };
+    class Searcher
+    {
+    public:
+        Searcher(BlockType b, const Well *well, Vertex v, WellVisitor *visitor);
 
-  //block chooser similar to the older bastet versions, does not give a block preview
-  class NoPreviewBlockChooser:public BlockChooser{
-  public:
-    NoPreviewBlockChooser();
-    virtual ~NoPreviewBlockChooser();
-    virtual Queue GetStartingQueue();
-    virtual BlockType GetNext(const Well *well, const Queue &q);
-  };
+    private:
+        std::tr1::unordered_set<Vertex> _visited;
+        //std::set<Vertex> _visited; ^^ the above is more efficient, we need to do many inserts
+        BlockType _block;
+        const Well *_well;
+        WellVisitor *_visitor;
+
+        void DFSVisit(Vertex v);
+    };
+
+    class BastetBlockChooser : public BlockChooser
+    {
+    public:
+        BastetBlockChooser();
+
+        virtual ~BastetBlockChooser();
+
+        virtual Queue GetStartingQueue();
+
+        virtual BlockType GetNext(const Well *well, const Queue &q);
+
+        /**
+         * computes "scores" of the candidate next blocks by dropping them in all possible positions and choosing the one that has the least max_(drop positions) Evaluate(well)
+         */
+        boost::array<long, 7> ComputeMainScores(const Well *well, BlockType currentBlock);
+
+    private:
+
+    };
+
+    //block chooser similar to the older bastet versions, does not give a block preview
+    class NoPreviewBlockChooser : public BlockChooser
+    {
+    public:
+        NoPreviewBlockChooser();
+
+        virtual ~NoPreviewBlockChooser();
+
+        virtual Queue GetStartingQueue();
+
+        virtual BlockType GetNext(const Well *well, const Queue &q);
+    };
 
 }
 

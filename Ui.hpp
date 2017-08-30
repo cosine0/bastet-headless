@@ -23,71 +23,98 @@
 #include "BlockPosition.hpp"
 #include "BlockChooser.hpp"
 #include "Config.hpp"
+#include "JsonSocket.h"
 
 #include <string>
 #include <curses.h>
 
-namespace Bastet{
-  typedef std::pair<int,int> Score; //(points, lines)
-  Score &operator +=(Score &a, const Score &b);
+namespace Bastet
+{
+    typedef std::pair<int, int> Score; //(points, lines)
+    Score &operator+=(Score &a, const Score &b);
 
-  class BorderedWindow{
-  private:
-    WINDOW *_window;
-    WINDOW *_border;
-  public:
-    BorderedWindow(int height, int width, int y=-1, int x=-1); ///w and h are "inner" dimensions, excluding the border. y and x are "outer", including the border. y=-1,x=-1 means "center"
-    ~BorderedWindow();
-    operator WINDOW *(); //returns the inner window
-    void RedrawBorder();
-    int GetMinX(); ///these are including border
-    int GetMinY();
-    int GetMaxX();
-    int GetMaxY();
-    void DrawDot(const Dot &d, Color c);
-  };
+    class BorderedWindow
+    {
+    private:
+        WINDOW *_window;
+        WINDOW *_border;
+    public:
+        BorderedWindow(int height, int width, int y = -1,
+                       int x = -1); ///w and h are "inner" dimensions, excluding the border. y and x are "outer", including the border. y=-1,x=-1 means "center"
+        ~BorderedWindow();
 
-  class Curses{
-  public:
-    Curses();
-  };
+        operator WINDOW *(); //returns the inner window
+        void RedrawBorder();
 
-  class Ui{
-  public:
-    Ui();
-    void MessageDialog(const std::string &message); //shows msg, ask for "space"
-    std::string InputDialog(const std::string &message); //asks for a string
-    int KeyDialog(const std::string &message); //asks for a single key
-    int MenuDialog(const std::vector<std::string> &choices); //asks to choose one, returns index
-    void RedrawStatic(); //redraws the "static" parts of the screen
-    void RedrawWell(const Well *well, BlockType falling, const BlockPosition &pos);
-    void ClearNext(); //clear the next block display
-    void RedrawNext(BlockType next); //redraws the next block display
-    void RedrawScore();
-    void CompletedLinesAnimation(const LinesCompleted &completed);
-    void DropBlock(BlockType b, Well *w); //returns <score,lines>
-    
-    void ChooseLevel();
-    void Play(BlockChooser *bc);
-    void HandleHighScores(difficulty_t diff); ///if needed, asks name for highscores
-    void ShowHighScores(difficulty_t diff);
-    void CustomizeKeys();
-  private:
-    //    difficulty_t _difficulty; //unused for now
-    int _level;
-    int _points;
-    int _lines;
-    Curses _curses;
-    BorderedWindow _wellWin;
-    BorderedWindow _nextWin;
-    BorderedWindow _scoreWin;
-    /**
-     * this is a kind of "well" structure to store the colors used to draw the blocks.
-     */
-    typedef boost::array<Color,WellWidth> ColorWellLine; 
-    typedef boost::array<ColorWellLine,RealWellHeight> ColorWell;
-    ColorWell _colors;
-  };
+        int GetMinX(); ///these are including border
+        int GetMinY();
+
+        int GetMaxX();
+
+        int GetMaxY();
+
+        void DrawDot(const Dot &d, Color c);
+    };
+
+    class Curses
+    {
+    public:
+        Curses();
+    };
+
+    class Ui
+    {
+    public:
+        Ui();
+        Ui(JsonSocket *sock, int speed);
+        void SetSocket(JsonSocket *sock);
+        void SetSpeed(int speed);
+
+        void MessageDialog(const std::string &message); //shows msg, ask for "space"
+        std::string InputDialog(const std::string &message); //asks for a string
+        int KeyDialog(const std::string &message); //asks for a single key
+        int MenuDialog(const std::vector<std::string> &choices); //asks to choose one, returns index
+        void RedrawStatic(); //redraws the "static" parts of the screen
+        void RedrawWell(const Well *well, BlockType falling, const BlockPosition &pos);
+
+        void ClearNext(); //clear the next block display
+        void RedrawNext(BlockType next); //redraws the next block display
+        void RedrawScore();
+
+        void CompletedLinesAnimation(const LinesCompleted &completed);
+
+        void DropBlock(BlockType b, Well *w); //returns <score,lines>
+
+        void ChooseLevel();
+
+        void Play(BlockChooser *bc);
+
+        void HandleHighScores(difficulty_t diff); ///if needed, asks name for highscores
+        void ShowHighScores(difficulty_t diff);
+
+        void CustomizeKeys();
+        int GetKey() const;
+
+        void MessageDialogNoWait(const std::string &message);
+    private:
+        //    difficulty_t _difficulty; //unused for now
+        int _level;
+        int _points;
+        int _lines;
+        Curses _curses;
+        BorderedWindow _wellWin;
+        BorderedWindow _nextWin;
+        BorderedWindow _scoreWin;
+        /**
+         * this is a kind of "well" structure to store the colors used to draw the blocks.
+         */
+        typedef boost::array<Color, WellWidth> ColorWellLine;
+        typedef boost::array<ColorWellLine, RealWellHeight> ColorWell;
+        ColorWell _colors;
+
+        JsonSocket* _socket;  // socket to remotely control the game
+        int _speed;  // log2(multiplication to speed of game)
+    };
 }
 
 #endif //UI_HPP

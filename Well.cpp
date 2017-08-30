@@ -17,85 +17,104 @@
  */
 
 #include "Well.hpp"
-#include <cassert>
 #include <cstring>
 #include <boost/foreach.hpp>
 #include <sstream>
 
-namespace Bastet{
+namespace Bastet
+{
 
-  std::string WellLine::PrettyPrint() const{
-    std::string s;
-    s.reserve(this->size());
-    for(unsigned int i=0;i<this->size();++i)
-      s.push_back(operator[](i)?'#':' ');
-    return s;
-  }
-
-  Well::Well(){
-    Clear();
-  }
-  
-  Well::~Well(){
-  }
-
-  void Well::Clear(){
-    BOOST_FOREACH(WellLine &l, _well){
-      l.reset();
+    std::string WellLine::PrettyPrint() const
+    {
+        std::string s;
+        s.reserve(this->size());
+        for (unsigned int i = 0; i < this->size(); ++i)
+            s.push_back(operator[](i) ? '#' : ' ');
+        return s;
     }
-  }
 
-  bool Well::Accomodates(const DotMatrix &m) const{
-    BOOST_FOREACH(const Dot &d, m){
-      if(!d.IsValid() || _well[d.y+2][d.x]==true) return false;
+    Well::Well()
+    {
+        Clear();
     }
-    return true;
-  }
 
-  bool Well::IsLineComplete(int y) const{
-    for(int x=0;x<(int)WellWidth;++x)
-      if(_well[y+2][x]==false)
-	return false;
-    return true;
-  }
+    Well::~Well()
+    {
+    }
 
-  LinesCompleted Well::Lock(BlockType t, const BlockPosition &p){
-    if(p.IsOutOfScreen(t))
-      throw(GameOver());
-    BOOST_FOREACH(const Dot &d,p.GetDots(t)){
-      _well[d.y+2][d.x]=true;
+    void Well::Clear()
+    {
+        BOOST_FOREACH(WellLine &l, _well)
+        {
+            l.reset();
+        }
     }
-    //checks for completedness
-    LinesCompleted lc;
-    lc._baseY=p.GetBaseY();
-    for(int k=0;k<4;++k){
-      int l=lc._baseY+k;
-      if(IsValidLine(l) && IsLineComplete(l))
-	lc._completed[k]=true;
-    }
-    return lc;
-  }
-  
-  void Well::ClearLines(const LinesCompleted &completed){
-    WellType::reverse_iterator it=completed.Clear(_well.rbegin(),_well.rend());
-    for(;it!=_well.rend();++it){
-      it->reset();
-    }
-  }
 
-  int Well::LockAndClearLines(BlockType t, const BlockPosition &p){
-    LinesCompleted lc=Lock(t,p);
-    ClearLines(lc);
-    return lc._completed.count();
-  }
-  
-  std::string Well::PrettyPrint() const{
-    std::ostringstream str;
-    str<<std::string(WellWidth+2,'-')<<'\n';
-    BOOST_FOREACH(const WellLine &l, _well)
-      str<<'|'<<l.PrettyPrint()<< "|\n";
-    str<<std::string(WellWidth+2,'-');
-    return str.str();
-  }
+    bool Well::Accomodates(const DotMatrix &m) const
+    {
+        BOOST_FOREACH(const Dot &d, m)
+        {
+            if (!d.IsValid() || _well[d.y + 2][d.x] == true) return false;
+        }
+        return true;
+    }
+
+    bool Well::IsLineComplete(int y) const
+    {
+        for (int x = 0; x < (int) WellWidth; ++x)
+            if (_well[y + 2][x] == false)
+                return false;
+        return true;
+    }
+
+    LinesCompleted Well::Lock(BlockType t, const BlockPosition &p)
+    {
+        if (p.IsOutOfScreen(t))
+            throw (GameOver());
+        BOOST_FOREACH(const Dot &d, p.GetDots(t))
+                    {
+                        _well[d.y + 2][d.x] = true;
+                    }
+        //checks for completedness
+        LinesCompleted lc;
+        lc._baseY = p.GetBaseY();
+        for (int k = 0; k < 4; ++k)
+        {
+            int l = lc._baseY + k;
+            if (IsValidLine(l) && IsLineComplete(l))
+                lc._completed[k] = true;
+        }
+        return lc;
+    }
+
+    void Well::ClearLines(const LinesCompleted &completed)
+    {
+        WellType::reverse_iterator it = completed.Clear(_well.rbegin(), _well.rend());
+        for (; it != _well.rend(); ++it)
+        {
+            it->reset();
+        }
+    }
+
+    int Well::LockAndClearLines(BlockType t, const BlockPosition &p)
+    {
+        LinesCompleted lc = Lock(t, p);
+        ClearLines(lc);
+        return lc._completed.count();
+    }
+
+    std::string Well::PrettyPrint() const
+    {
+        std::ostringstream str;
+        str << std::string(WellWidth + 2, '-') << '\n';
+        BOOST_FOREACH(const WellLine &l, _well)str << '|' << l.PrettyPrint() << "|\n";
+        str << std::string(WellWidth + 2, '-');
+        return str.str();
+    }
+
+    Well::WellType Well::GetWell() const
+    {
+        return _well;
+    }
 }
 

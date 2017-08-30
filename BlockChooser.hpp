@@ -22,31 +22,41 @@
 #include "Block.hpp"
 #include <deque>
 
-namespace Bastet{
+namespace Bastet
+{
 
-  class Well;
-  //queue of blocks to appear on the screen
-  typedef std::deque<BlockType> Queue;
+    class Well;
 
-  ///Abstract class to represent a block choosing algorithm
-  class BlockChooser{
-  public:
-    BlockChooser();
-    virtual ~BlockChooser();
-    virtual Queue GetStartingQueue()=0; //chooses first blocks after a game starts
-    virtual BlockType GetNext(const Well *well, const Queue &q)=0; //chooses next block
-  private:
-  };
+    //queue of blocks to appear on the screen
+    typedef std::deque<BlockType> Queue;
 
-  ///the usual Tetris random block chooser, for testing purposes
-  class RandomBlockChooser: public BlockChooser{
-  public:
-    RandomBlockChooser();
-    virtual ~RandomBlockChooser();
-    virtual Queue GetStartingQueue();
-    virtual BlockType GetNext(const Well *well, const Queue &q);
-  private:
-  };
+    ///Abstract class to represent a block choosing algorithm
+    class BlockChooser
+    {
+    public:
+        BlockChooser();
+
+        virtual ~BlockChooser();
+
+        virtual Queue GetStartingQueue()=0; //chooses first blocks after a game starts
+        virtual BlockType GetNext(const Well *well, const Queue &q)=0; //chooses next block
+    private:
+    };
+
+    ///the usual Tetris random block chooser, for testing purposes
+    class RandomBlockChooser : public BlockChooser
+    {
+    public:
+        RandomBlockChooser();
+
+        virtual ~RandomBlockChooser();
+
+        virtual Queue GetStartingQueue();
+
+        virtual BlockType GetNext(const Well *well, const Queue &q);
+
+    private:
+    };
 
 }
 
