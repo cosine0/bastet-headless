@@ -44,6 +44,7 @@ int main(int argc, char **argv)
         ui.MessageDialogNoWait(string("Connect to port ") += argv[2]);
         sock = new JsonSocket(static_cast<uint16_t>(port));
         ui.SetSocket(sock);
+        sock->send(str(format("{\"type\":\"well_size\",\"width\":%d,\"height\":%d}") % WellWidth % WellHeight));
     }
 
     while (true)
