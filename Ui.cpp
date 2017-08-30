@@ -381,6 +381,23 @@ namespace Bastet
 
     void Ui::DropBlock(BlockType b, Well *w)
     {
+
+        if (_socket != nullptr)
+        {
+            rapidjson::Document doc;
+            auto& allocator = doc.GetAllocator();
+
+            doc.SetObject();
+            doc.AddMember("type", "current_block", allocator);
+            doc.AddMember("block", b, allocator);
+
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            doc.Accept(writer);
+
+            _socket->send(buffer.GetString());
+        }
+
         fd_set in, tmp_in;
         struct timeval time;
 
@@ -403,24 +420,8 @@ namespace Bastet
         while (1)
         { //break = tetromino locked
             tmp_in = in;
-            int sel_ret = select(_socket->getFd() + 1, &tmp_in, NULL, NULL, &time);
-            if (sel_ret == 0)
-            {
-                key_pressed = false;
-                if (auto_drop_time >= delay[_level])
-                {
-                    // auto drop
-                    if (!p.MoveIfPossible(Down, b, w))
-                        break;
-                    auto_drop_time = 0;
-                    RedrawWell(w, b, p);
-                    continue;
-                }
-
-                auto_drop_time += 100000;
-                time.tv_sec = 0;
-                time.tv_usec = 100000 >> _speed;
-            } else if (!key_pressed)
+            int sel_ret = select(FD_SETSIZE, &tmp_in, NULL, NULL, &time);
+            if (!key_pressed)
             { //keypress
                 int ch;
                 ch = GetKey();
@@ -455,7 +456,24 @@ namespace Bastet
                     nodelay(stdscr, TRUE);
                 } else {} //default...
                 RedrawWell(w, b, p);
-            } else
+            } else if (sel_ret == 0)
+            {
+                key_pressed = false;
+                if (auto_drop_time >= delay[_level])
+                {
+                    // auto drop
+                    if (!p.MoveIfPossible(Down, b, w))
+                        break;
+                    auto_drop_time = 0;
+                    RedrawWell(w, b, p);
+                    continue;
+                }
+
+                auto_drop_time += 100000;
+                time.tv_sec = 0;
+                time.tv_usec = 100000 >> _speed;
+            }
+            else
             {
                 GetKey();
             }//keypress switch
@@ -526,6 +544,7 @@ namespace Bastet
             BOOST_FOREACH(const Dot &d, p.GetDots(b))
                 if (d.y >= 0)
                     serialized_well[(WellWidth + 1) * d.y + d.x] = '1';
+
             rapidjson::Document doc;
             auto& allocator = doc.GetAllocator();
 
@@ -562,6 +581,22 @@ namespace Bastet
 
     void Ui::RedrawNext(BlockType b)
     {
+
+        if (_socket != nullptr)
+        {
+            rapidjson::Document doc;
+            auto& allocator = doc.GetAllocator();
+
+            doc.SetObject();
+            doc.AddMember("type", "next_block", allocator);
+            doc.AddMember("block", b, allocator);
+
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            doc.Accept(writer);
+
+            _socket->send(buffer.GetString());
+        }
         wmove((WINDOW *) _nextWin, 1, 0);
         wclrtobot((WINDOW *) _nextWin);
 
@@ -572,6 +607,23 @@ namespace Bastet
 
     void Ui::RedrawScore()
     {
+        if (_socket != nullptr)
+        {
+            rapidjson::Document doc;
+            auto& allocator = doc.GetAllocator();
+
+            doc.SetObject();
+            doc.AddMember("type", "score", allocator);
+            doc.AddMember("points", _points, allocator);
+            doc.AddMember("lines", _lines, allocator);
+            doc.AddMember("level", _level, allocator);
+
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            doc.Accept(writer);
+
+            _socket->send(buffer.GetString());
+        }
         wattrset((WINDOW *) _scoreWin, COLOR_PAIR(17));
         mvwprintw(_scoreWin, 1, 7, "%6d", _points);
         wattrset((WINDOW *) _scoreWin, COLOR_PAIR(18));
@@ -595,7 +647,7 @@ namespace Bastet
                     whline(_wellWin, i % 2 ? ' ' : ':', WellWidth * 2);
                 }
                 wrefresh(_wellWin);
-                usleep(500000 / 6);
+                usleep(static_cast<__useconds_t>((500000 / 6) >> _speed));
             }
         }
     }
@@ -644,10 +696,12 @@ namespace Bastet
         {
             while (true)
             {
-                while (GetKey() != ERR); //ignores the keys pressed during the next block calculation
+                if (_socket == nullptr)
+                    while (GetKey() != ERR); //ignores the keys pressed during the next block calculation
                 BlockType current = q.front();
                 q.pop_front();
-                if (!q.empty()) RedrawNext(q.front());
+                if (!q.empty())
+                    RedrawNext(q.front());
                 DropBlock(current, &w);
                 q.push_back(bc->GetNext(&w, q));
             }
