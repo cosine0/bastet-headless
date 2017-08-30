@@ -386,6 +386,8 @@ namespace Bastet
 
         FD_ZERO(&in);
         FD_SET(0, &in); //adds stdin
+        if (_socket != nullptr)
+           FD_SET(_socket->getFd(), &in); //adds socket
 
         time.tv_sec = 0;
         time.tv_usec = 100000 >> _speed;
@@ -401,28 +403,29 @@ namespace Bastet
         while (1)
         { //break = tetromino locked
             tmp_in = in;
-            int sel_ret = select(FD_SETSIZE, &tmp_in, NULL, NULL, &time);
+            int sel_ret = select(_socket->getFd() + 1, &tmp_in, NULL, NULL, &time);
             if (sel_ret == 0)
-            { // auto drop
+            {
                 key_pressed = false;
                 if (auto_drop_time >= delay[_level])
                 {
+                    // auto drop
                     if (!p.MoveIfPossible(Down, b, w))
                         break;
                     auto_drop_time = 0;
+                    RedrawWell(w, b, p);
+                    continue;
                 }
 
                 auto_drop_time += 100000;
                 time.tv_sec = 0;
                 time.tv_usec = 100000 >> _speed;
-            } else
+            } else if (!key_pressed)
             { //keypress
                 int ch;
-                if (!key_pressed)
-                {
-                    ch = GetKey();
-                    key_pressed = true;
-                }
+                ch = GetKey();
+                key_pressed = true;
+
                 if (ch == keys->Left)
                     p.MoveIfPossible(Left, b, w);
                 else if (ch == keys->Right)
@@ -432,10 +435,7 @@ namespace Bastet
                     bool val = p.MoveIfPossible(Down, b, w);
                     if (val)
                     {
-                        //_points++;
-                        //RedrawScore();
-                        time.tv_sec = 0;
-                        time.tv_usec = delay[_level];
+                        auto_drop_time = 0;
                     } else break;
                 } else if (ch == keys->RotateCW)
                     p.MoveIfPossible(RotateCW, b, w);
@@ -454,9 +454,11 @@ namespace Bastet
                     RedrawWell(w, b, p);
                     nodelay(stdscr, TRUE);
                 } else {} //default...
-
-            } //keypress switch
-            RedrawWell(w, b, p);
+                RedrawWell(w, b, p);
+            } else
+            {
+                GetKey();
+            }//keypress switch
         } //while(1)
 
         LinesCompleted lc = w->Lock(b, p);
@@ -509,16 +511,16 @@ namespace Bastet
             string serialized_well((WellWidth + 1) * WellHeight, '0');
 
             const auto &cells = w->GetWell();
-            for (int i = 0; i < WellWidth; ++i)
+            for (int j = 0; j < WellHeight; ++j)
             {
-                for (int j = 0; j < WellHeight; ++j)
+                for (int i = 0; i < WellWidth; ++i)
                 {
                     if (cells[j + 2][i])
                     {
                         serialized_well[(WellWidth + 1) * j + i] = '1';
                     }
                 }
-                serialized_well[(WellWidth + 1) * i + WellWidth] = '\n';
+                serialized_well[(WellWidth + 1) * j + WellWidth] = '\n';
             }
             ofstream fout("out", ios::app);
             BOOST_FOREACH(const Dot &d, p.GetDots(b))

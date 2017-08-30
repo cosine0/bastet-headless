@@ -51,3 +51,8 @@ void JsonSocket::close()
     ::close(_connection_fd);
     ::close(_socket_fd);
 }
+
+int JsonSocket::getFd() const
+{
+    return _connection_fd;
+}

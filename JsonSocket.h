@@ -23,6 +23,7 @@ public:
     ~JsonSocket();
     void send(const std::string &buffer) const;
     std::string recv(size_t length=4096) const;
+    int getFd() const;
 };
 
 
