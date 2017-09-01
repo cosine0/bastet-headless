@@ -175,7 +175,7 @@ namespace Bastet
             _wellWin(WellHeight, 2 * WellWidth),
             _nextWin(5, 14, _wellWin.GetMinY(), _wellWin.GetMaxX() + 1),
             _scoreWin(7, 14, _nextWin.GetMaxY(), _nextWin.GetMinX()),
-            _socket(nullptr), _speed(0), _seed(-1)
+            _socket(nullptr), _speed(0)
     {
         /* Set random seed. */
         SetSeed(time(NULL) + 37);
@@ -704,6 +704,7 @@ namespace Bastet
             _socket->send(buffer.GetString());
         }
         // [/cosine]
+        srandom(_seed);
         _level = 0;
         _points = 0;
         _lines = 0;
