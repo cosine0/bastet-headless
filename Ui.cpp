@@ -168,9 +168,6 @@ namespace Bastet
         init_pair(20, COLOR_YELLOW, COLOR_BLACK); //messages
         init_pair(21, COLOR_WHITE, COLOR_BLACK); //window borders
         init_pair(22, COLOR_WHITE, COLOR_BLACK); //end of line animation
-
-        /* Set random seed. */
-        srandom(time(NULL) + 37);
     }
 
     Ui::Ui() :
@@ -178,18 +175,11 @@ namespace Bastet
             _wellWin(WellHeight, 2 * WellWidth),
             _nextWin(5, 14, _wellWin.GetMinY(), _wellWin.GetMaxX() + 1),
             _scoreWin(7, 14, _nextWin.GetMaxY(), _nextWin.GetMinX()),
-            _socket(nullptr), _speed(0)
+            _socket(nullptr), _speed(0), _seed(-1)
     {
-        BOOST_FOREACH(ColorWellLine &a, _colors) a.assign(0);
-    }
+        /* Set random seed. */
+        SetSeed(time(NULL) + 37);
 
-    Ui::Ui(JsonSocket* sock, int speed) :
-            _level(0),
-            _wellWin(WellHeight, 2 * WellWidth),
-            _nextWin(5, 14, _wellWin.GetMinY(), _wellWin.GetMaxX() + 1),
-            _scoreWin(7, 14, _nextWin.GetMaxY(), _nextWin.GetMinX()),
-            _socket(sock), _speed(speed)
-    {
         BOOST_FOREACH(ColorWellLine &a, _colors) a.assign(0);
     }
 
@@ -249,14 +239,24 @@ namespace Bastet
         w.RedrawBorder();
         wrefresh(w);
         PrepareUiGetch();
-        //nocbreak();
-        echo();
-        curs_set(1);
+
+
         char buf[51];
-        mvwgetnstr(w, d.y - 2, 1, buf, 50);
-        curs_set(0);
-        noecho();
-        return string(buf);
+        if (_socket == nullptr)
+        {
+            echo();
+            curs_set(1);
+            mvwgetnstr(w, d.y - 2, 1, buf, 50);
+            curs_set(0);
+            noecho();
+            return string(buf);
+        } else
+        {
+            GetKey();
+            return "socket player";
+        }
+
+
     }
 
     int Ui::KeyDialog(const std::string &message)
@@ -427,23 +427,37 @@ namespace Bastet
                 ch = GetKey();
                 key_pressed = true;
 
-                if (ch == keys->Left)
+                if (ch == keys->Left) {
+                    if (_socket == nullptr)
+                        _move_log.push_back(Left);
                     p.MoveIfPossible(Left, b, w);
-                else if (ch == keys->Right)
+                } else if (ch == keys->Right) {
+                    if (_socket == nullptr)
+                        _move_log.push_back(Right);
                     p.MoveIfPossible(Right, b, w);
-                else if (ch == keys->Down)
+                } else if (ch == keys->Down)
                 {
+                    if (_socket == nullptr)
+                        _move_log.push_back(Down);
                     bool val = p.MoveIfPossible(Down, b, w);
                     if (val)
                     {
                         auto_drop_time = 0;
                     } else break;
-                } else if (ch == keys->RotateCW)
+
+                } else if (ch == keys->RotateCW) {
+                    if (_socket == nullptr)
+                        _move_log.push_back(RotateCW);
                     p.MoveIfPossible(RotateCW, b, w);
-                else if (ch == keys->RotateCCW)
+
+                } else if (ch == keys->RotateCCW) {
+                    if (_socket == nullptr)
+                        _move_log.push_back(RotateCCW);
                     p.MoveIfPossible(RotateCCW, b, w);
-                else if (ch == keys->Drop)
+                } else if (ch == keys->Drop)
                 {
+                    if (_socket == nullptr)
+                        _move_log.push_back(Drop);
                     p.Drop(b, w);
                     //_points+=2*fb.HardDrop(w);
                     //RedrawScore();
@@ -454,7 +468,10 @@ namespace Bastet
                     RedrawStatic();
                     RedrawWell(w, b, p);
                     nodelay(stdscr, TRUE);
-                } else {} //default...
+                } else { //default...
+                    if (_socket == nullptr)
+                        _move_log.push_back(None);
+                }
                 RedrawWell(w, b, p);
             } else if (sel_ret == 0)
             {
@@ -540,17 +557,24 @@ namespace Bastet
                 }
                 serialized_well[(WellWidth + 1) * j + WellWidth] = '\n';
             }
-            ofstream fout("out", ios::app);
-            BOOST_FOREACH(const Dot &d, p.GetDots(b))
-                if (d.y >= 0)
-                    serialized_well[(WellWidth + 1) * d.y + d.x] = '1';
 
             rapidjson::Document doc;
             auto& allocator = doc.GetAllocator();
 
+            ofstream fout("out", ios::app);
+            rapidjson::Value block_coords(rapidjson::kArrayType);
+            BOOST_FOREACH(const Dot &d, p.GetDots(b))
+                if (d.y >= 0) {
+                    rapidjson::Value coord(rapidjson::kArrayType);
+                    coord.PushBack(d.x, allocator);
+                    coord.PushBack(d.y, allocator);
+                    block_coords.PushBack(coord, allocator);
+                }
+
             doc.SetObject();
             doc.AddMember("type", "well", allocator);
             doc.AddMember("well", rapidjson::StringRef(serialized_well.c_str()), allocator);
+            doc.AddMember("block", block_coords, allocator);
 
             rapidjson::StringBuffer buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -683,6 +707,7 @@ namespace Bastet
         _level = 0;
         _points = 0;
         _lines = 0;
+        _move_log.clear();
         BOOST_FOREACH(ColorWellLine &a, _colors) a.assign(0);
         RedrawStatic();
         RedrawScore();
@@ -707,7 +732,18 @@ namespace Bastet
             }
         } catch (GameOver &go)
         {
+            if (_socket == nullptr)
+            {
+                ofstream fout("bastet.rep", ios::app);
+                fout << _seed << ' ';
+                for (auto& move : _move_log)
+                    fout << move;
 
+                fout << endl;
+            } else
+            {
+                _socket->send(R"({"type":"game_over"})");
+            }
         }
         return;
     }
@@ -764,15 +800,7 @@ namespace Bastet
     {
         if (_socket != nullptr)
         {
-            rapidjson::Document doc;
-            auto& allocator = doc.GetAllocator();
-
-            doc.SetObject();
-            doc.AddMember("type", "send_me_a_key", allocator);
-            rapidjson::StringBuffer buffer;
-            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-            doc.Accept(writer);
-            _socket->send(buffer.GetString());
+            _socket->send(R"({"type":"send_me_a_key"})");
             return *(int *) _socket->recv(4).c_str();
         }
         return getch();
@@ -786,5 +814,10 @@ namespace Bastet
     void Ui::SetSpeed(int speed)
     {
         _speed = speed;
+    }
+
+    void Ui::SetSeed(unsigned int seed)
+    {
+        _seed = seed;
     }
 }

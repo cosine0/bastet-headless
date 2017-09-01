@@ -44,14 +44,14 @@ int main(int argc, char **argv)
         ui.MessageDialogNoWait(string("Connect to port ") += argv[2]);
         sock = new JsonSocket(static_cast<uint16_t>(port));
         ui.SetSocket(sock);
-        sock->send(str(format("{\"type\":\"well_size\",\"width\":%d,\"height\":%d}") % WellWidth % WellHeight));
+        sock->send(str(format(R"({"type":"well_size","width":%d,"height":%d})") % WellWidth % WellHeight));
     }
 
     while (true)
     {
 
         int choice = ui.MenuDialog(
-                list_of("Play! (normal version)")("Play! (harder version)")("View highscores")("Customize keys")(
+                list_of("Play! (normal version)")("Play! (harder version)")("Set random seed")("View highscores")("Customize keys")(
                         "Quit"));
         switch (choice)
         {
@@ -62,6 +62,7 @@ int main(int argc, char **argv)
                 ui.Play(&bc);
                 ui.HandleHighScores(difficulty_normal);
                 ui.ShowHighScores(difficulty_normal);
+                ui.SetSeed(static_cast<unsigned int>(time(nullptr)));
             }
                 break;
             case 1:
@@ -71,16 +72,23 @@ int main(int argc, char **argv)
                 ui.Play(&bc);
                 ui.HandleHighScores(difficulty_hard);
                 ui.ShowHighScores(difficulty_hard);
+                ui.SetSeed(static_cast<unsigned int>(time(nullptr)));
             }
                 break;
             case 2:
+            {
+                int seed = ui.KeyDialog("Input key to use as the seed");
+                ui.SetSeed(static_cast<unsigned int>(seed));
+            }
+                break;
+            case 3:
                 ui.ShowHighScores(difficulty_normal);
                 ui.ShowHighScores(difficulty_hard);
                 break;
-            case 3:
+            case 4:
                 ui.CustomizeKeys();
                 break;
-            case 4:
+            case 5:
                 if (sock != nullptr)
                     delete sock;
                 exit(0);

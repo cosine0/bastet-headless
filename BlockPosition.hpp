@@ -30,7 +30,7 @@ namespace Bastet
 
     enum Movement
     {
-        RotateCW, RotateCCW, Left, Right, Down
+        Down, Drop, Left, Right, RotateCCW, RotateCW, None
     };
 
     class BlockPosition

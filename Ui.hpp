@@ -66,7 +66,6 @@ namespace Bastet
     {
     public:
         Ui();
-        Ui(JsonSocket *sock, int speed);
         void SetSocket(JsonSocket *sock);
         void SetSpeed(int speed);
 
@@ -96,6 +95,9 @@ namespace Bastet
         int GetKey() const;
 
         void MessageDialogNoWait(const std::string &message);
+
+        void SetSeed(unsigned int seed);
+
     private:
         //    difficulty_t _difficulty; //unused for now
         int _level;
@@ -114,6 +116,8 @@ namespace Bastet
 
         JsonSocket* _socket;  // socket to remotely control the game
         int _speed;  // log2(multiplication to speed of game)
+        unsigned int _seed;  // random seed
+        std::vector<Movement> _move_log;  // key press log to make a replay file
     };
 }
 
