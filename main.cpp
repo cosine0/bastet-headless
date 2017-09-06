@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     if (argc >= 3)
     {
         unsigned long port = strtoul(argv[2], nullptr, 10);
-        ui.MessageDialogNoWait(string("Connect to port ") += argv[2]);
+        cout << (string("Connect to port ") += argv[2]) << endl;
         sock = new JsonSocket(static_cast<uint16_t>(port));
         ui.SetSocket(sock);
         sock->send(str(format(R"({"type":"well_size","width":%d,"height":%d})") % WellWidth % WellHeight));
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     while (true)
     {
 
-        int choice = ui.MenuDialog(
+        size_t choice = ui.MenuDialog(
                 list_of("Play! (normal version)")("Play! (harder version)")("Set random seed")("View highscores")("Customize keys")(
                         "Quit"));
         switch (choice)

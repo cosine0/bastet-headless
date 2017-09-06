@@ -41,146 +41,12 @@ namespace Bastet
         return a;
     }
 
-    void voidendwin()
-    {
-        endwin();
-    }
-
-    void PrepareUiGetch()
-    { ///gets ready for a getch() in the UI, i.e. empties the char buffer, sets blocking IO
-        nodelay(stdscr, TRUE);
-        while (getch() != ERR);
-        nodelay(stdscr, FALSE);
-    }
-
-    BorderedWindow::BorderedWindow(int height, int width, int y, int x)
-    {
-        if (y == -1 || x == -1)
-        {
-            int screen_h, screen_w;
-            getmaxyx(stdscr, screen_h, screen_w);
-            if (y == -1)
-                y = (screen_h - height - 2) / 2 - 1;
-            if (x == -1)
-                x = (screen_w - width - 2) / 2 - 1;
-        }
-        _border = newwin(height + 2, width + 2, y, x);
-        _window = derwin(_border, height, width, 1, 1);
-        //    wattrset(_border,COLOR_PAIR(21));
-        RedrawBorder();
-    }
-
-    BorderedWindow::~BorderedWindow()
-    {
-        delwin(_window);
-        delwin(_border);
-    }
-
-    BorderedWindow::operator WINDOW *()
-    {
-        return _window;
-    }
-
-    void BorderedWindow::RedrawBorder()
-    {
-        box(_border, 0, 0);
-        wrefresh(_border);
-    }
-
-    int BorderedWindow::GetMinX()
-    {
-        int x, y;
-        getbegyx(_border, y, x);
-        (void) (y); //silence warning about unused y
-        return x;
-    }
-
-    int BorderedWindow::GetMinY()
-    {
-        int y, x;
-        getbegyx(_border, y, x);
-        return y;
-    }
-
-    int BorderedWindow::GetMaxX()
-    {
-        int x, y;
-        getmaxyx(_border, y, x);
-        (void) (y); //silence warning about unused y
-        return GetMinX() + x;
-    }
-
-    int BorderedWindow::GetMaxY()
-    {
-        int y, x;
-        getmaxyx(_border, y, x);
-        return GetMinY() + y;
-    }
-
-    void BorderedWindow::DrawDot(const Dot &d, Color c)
-    {
-        wattrset((WINDOW *) (*this), c);
-        mvwaddch(*this, d.y, 2 * d.x, ' ');
-        mvwaddch(*this, d.y, 2 * d.x + 1, ' ');
-    }
-
-    Curses::Curses()
-    {
-        if (initscr() == NULL)
-        {
-            fprintf(stderr, "bastet: error while initializing graphics (ncurses library).\n");
-            exit(1);
-        }
-        if (!has_colors())
-        {
-            endwin();
-            fprintf(stderr, "bastet: no color support, sorry. Ask the author for a black and white version.");
-            exit(1);
-        }
-
-        /* Turn off cursor. */
-        curs_set(0);
-        atexit(voidendwin); /*make sure curses are properly stopped*/
-
-        /* Setup keyboard. We'd like to get each and every character, but
-           not to display them on the terminal. */
-        keypad(stdscr, TRUE);
-        nodelay(stdscr, TRUE);
-        nonl();
-        noecho();
-        cbreak();
-
-        start_color();
-        /* 1 - 16 is for blocks */
-        init_pair(1, COLOR_BLACK, COLOR_RED);
-        init_pair(2, COLOR_BLACK, COLOR_YELLOW);
-        init_pair(3, COLOR_BLACK, COLOR_GREEN);
-        init_pair(4, COLOR_BLACK, COLOR_CYAN);
-        init_pair(5, COLOR_BLACK, COLOR_MAGENTA);
-        init_pair(6, COLOR_BLACK, COLOR_BLUE);
-        init_pair(7, COLOR_BLACK, COLOR_WHITE);
-
-
-        /* 17 - ? is for other things */
-        init_pair(17, COLOR_RED, COLOR_BLACK); //points
-        init_pair(18, COLOR_YELLOW, COLOR_BLACK); //number of lines
-        init_pair(19, COLOR_GREEN, COLOR_BLACK); //level
-        init_pair(20, COLOR_YELLOW, COLOR_BLACK); //messages
-        init_pair(21, COLOR_WHITE, COLOR_BLACK); //window borders
-        init_pair(22, COLOR_WHITE, COLOR_BLACK); //end of line animation
-    }
-
     Ui::Ui() :
             _level(0),
-            _wellWin(WellHeight, 2 * WellWidth),
-            _nextWin(5, 14, _wellWin.GetMinY(), _wellWin.GetMaxX() + 1),
-            _scoreWin(7, 14, _nextWin.GetMaxY(), _nextWin.GetMinX()),
             _socket(nullptr), _speed(0)
     {
         /* Set random seed. */
         SetSeed(time(NULL) + 37);
-
-        BOOST_FOREACH(ColorWellLine &a, _colors) a.assign(0);
     }
 
     Dot BoundingRect(const std::string &message)
@@ -189,24 +55,15 @@ namespace Bastet
         split(splits, message, is_any_of("\n"));
         size_t maxlen = 0;
         BOOST_FOREACH(string &s, splits)
-                    {
-                        maxlen = max(maxlen, s.size());
-                    }
+        {
+            maxlen = max(maxlen, s.size());
+        }
         return (Dot) {int(maxlen + 1), int(splits.size())};
     }
 
     void Ui::MessageDialog(const std::string &message)
     {
-        RedrawStatic();
-
-        Dot d = BoundingRect(message);
-
-        BorderedWindow w(d.y, d.x);
-        wattrset((WINDOW *) w, COLOR_PAIR(20));
-        mvwprintw(w, 0, 0, message.c_str());
-        w.RedrawBorder();
-        wrefresh(w);
-        PrepareUiGetch();
+        cout << message << endl;
         int ch;
         do
         {
@@ -216,88 +73,30 @@ namespace Bastet
 
     void Ui::MessageDialogNoWait(const std::string &message)
     {
-        RedrawStatic();
-
-        Dot d = BoundingRect(message);
-
-        BorderedWindow w(d.y, d.x);
-        wattrset((WINDOW *) w, COLOR_PAIR(20));
-        mvwprintw(w, 0, 0, message.c_str());
-        w.RedrawBorder();
-        wrefresh(w);
-        PrepareUiGetch();
+        cout << message << endl;
     }
 
     std::string Ui::InputDialog(const std::string &message)
     {
-        RedrawStatic();
-        Dot d = BoundingRect(message);
-        d.y += 3;
-        BorderedWindow w(d.y, d.x);
-        wattrset((WINDOW *) w, COLOR_PAIR(20));
-        mvwprintw(w, 0, 0, message.c_str());
-        w.RedrawBorder();
-        wrefresh(w);
-        PrepareUiGetch();
-
-
-        char buf[51];
-        if (_socket == nullptr)
-        {
-            echo();
-            curs_set(1);
-            mvwgetnstr(w, d.y - 2, 1, buf, 50);
-            curs_set(0);
-            noecho();
-            return string(buf);
-        } else
-        {
-            GetKey();
-            return "socket player";
-        }
-
-
+        GetKey();
+        return "socket player";
     }
 
     int Ui::KeyDialog(const std::string &message)
     {
-        RedrawStatic();
-
-        Dot d = BoundingRect(message);
-
-        BorderedWindow w(d.y, d.x);
-        wattrset((WINDOW *) w, COLOR_PAIR(20));
-        mvwprintw(w, 0, 0, message.c_str());
-        w.RedrawBorder();
-        wrefresh(w);
-        PrepareUiGetch();
+        cout << message << endl;
         return GetKey();
     }
 
-    int Ui::MenuDialog(const vector<string> &choices)
+    size_t Ui::MenuDialog(const vector<string> &choices)
     {
-        RedrawStatic();
-        size_t width = 0;
-        BOOST_FOREACH(const string &s, choices)
-                    {
-                        width = max(width, s.size());
-                    }
-
-        Dot d = {int(width + 5), int(choices.size())};
-        BorderedWindow w(d.y, d.x);
-        wattrset((WINDOW *) w, COLOR_PAIR(20));
         for (size_t i = 0; i < choices.size(); ++i)
         {
-            mvwprintw(w, i, 4, choices[i].c_str());
+            cout << i << ". " << choices[i] << endl;
         }
-        w.RedrawBorder();
-        wrefresh(w);
-        PrepareUiGetch();
         size_t chosen = 0;
         int ch;
         bool done = false;
-        mvwprintw(w, chosen, 1, "-> ");
-        wrefresh(w);
         do
         {
             ch = GetKey();
@@ -305,17 +104,11 @@ namespace Bastet
             {
                 case KEY_UP:
                     if (chosen == 0) break;
-                    mvwprintw(w, chosen, 1, "   ");
                     chosen--;
-                    mvwprintw(w, chosen, 1, "-> ");
-                    wrefresh(w);
                     break;
                 case KEY_DOWN:
                     if (chosen == choices.size() - 1) break;
-                    mvwprintw(w, chosen, 1, "   ");
                     chosen++;
-                    mvwprintw(w, chosen, 1, "-> ");
-                    wrefresh(w);
                     break;
                 case 13: //ENTER
                 case ' ':
@@ -324,56 +117,6 @@ namespace Bastet
             }
         } while (!done);
         return chosen;
-    }
-
-    void Ui::ChooseLevel()
-    {
-        RedrawStatic();
-        int ch = '0';
-        format fmt("    Get ready!\n"
-                   " \n"
-                   " Starting level = %1% \n"
-                   " 0-9 to change\n"
-                   " <SPACE> to start\n");
-        string msg;
-        while (ch != ' ')
-        {
-            msg = str(fmt % _level);
-            PrepareUiGetch();
-            Dot d = BoundingRect(msg);
-            BorderedWindow w(d.y, d.x);
-            wattrset((WINDOW *) w, COLOR_PAIR(20));
-            mvwprintw(w, 0, 0, msg.c_str());
-            w.RedrawBorder();
-            ch = GetKey();
-            switch (ch)
-            {
-                case '0'...'9':
-                    _level = ch - '0';
-            }
-        }
-        assert(_level >= 0 && _level <= 9);
-    }
-
-    void Ui::RedrawStatic()
-    {
-        erase();
-        wrefresh(stdscr);
-        _wellWin.RedrawBorder();
-        _nextWin.RedrawBorder();
-        _scoreWin.RedrawBorder();
-
-        wattrset((WINDOW *) _nextWin, COLOR_PAIR(17));
-        mvwprintw(_nextWin, 0, 0, " Next block:");
-        wrefresh(_nextWin);
-
-        wattrset((WINDOW *) _scoreWin, COLOR_PAIR(17));
-        mvwprintw(_scoreWin, 1, 0, "Score:");
-        wattrset((WINDOW *) _scoreWin, COLOR_PAIR(18));
-        mvwprintw(_scoreWin, 3, 0, "Lines:");
-        wattrset((WINDOW *) _scoreWin, COLOR_PAIR(19));
-        mvwprintw(_scoreWin, 5, 0, "Level:");
-        wrefresh(_scoreWin);
     }
 
     //must be <1E+06, because it should fit into a timeval usec field(see man select)
@@ -465,9 +208,7 @@ namespace Bastet
                 } else if (ch == keys->Pause)
                 {
                     MessageDialog("Press SPACE or ENTER to resume the game");
-                    RedrawStatic();
                     RedrawWell(w, b, p);
-                    nodelay(stdscr, TRUE);
                 } else { //default...
                     if (_socket == nullptr)
                         _move_log.push_back(None);
@@ -498,20 +239,11 @@ namespace Bastet
 
         LinesCompleted lc = w->Lock(b, p);
         //locks also into _colors
-        BOOST_FOREACH(const Dot &d, p.GetDots(b))if (d.y >= 0)
-                            _colors[d.y + 2][d.x] = GetColor(b);
 
         RedrawWell(w, b, p);
         if (lc._completed.any())
         {
-            CompletedLinesAnimation(lc);
             w->ClearLines(lc);
-            //clears also _colors
-            ColorWell::reverse_iterator it = lc.Clear(_colors.rbegin(), _colors.rend());
-            for (; it != _colors.rend(); ++it)
-            {
-                it->assign(0);
-            }
 
             int newlines = lc._completed.count();
             if (((_lines + newlines) / 10 - _lines / 10 != 0) && _level < 9)
@@ -582,25 +314,10 @@ namespace Bastet
 
             _socket->send(buffer.GetString());
         }
-
-        for (int i = 0; i < WellWidth; ++i)
-            for (int j = 0; j < WellHeight; ++j)
-            {
-                Dot d = {i, j};
-                _wellWin.DrawDot(d, _colors[j + 2][i]);
-            }
-
-        BOOST_FOREACH(const Dot &d, p.GetDots(b))
-            _wellWin.DrawDot(d, GetColor(b));
-
-        wrefresh(_wellWin);
     }
 
     void Ui::ClearNext()
     {
-        wmove((WINDOW *) _nextWin, 1, 0);
-        wclrtobot((WINDOW *) _nextWin);
-        wrefresh(_nextWin);
     }
 
     void Ui::RedrawNext(BlockType b)
@@ -621,12 +338,6 @@ namespace Bastet
 
             _socket->send(buffer.GetString());
         }
-        wmove((WINDOW *) _nextWin, 1, 0);
-        wclrtobot((WINDOW *) _nextWin);
-
-        BlockPosition p((Dot) {2, 2});
-        BOOST_FOREACH(const Dot &d, p.GetDots(b))_nextWin.DrawDot(d, GetColor(b));
-        wrefresh(_nextWin);
     }
 
     void Ui::RedrawScore()
@@ -648,32 +359,7 @@ namespace Bastet
 
             _socket->send(buffer.GetString());
         }
-        wattrset((WINDOW *) _scoreWin, COLOR_PAIR(17));
-        mvwprintw(_scoreWin, 1, 7, "%6d", _points);
-        wattrset((WINDOW *) _scoreWin, COLOR_PAIR(18));
-        mvwprintw(_scoreWin, 3, 7, "%6d", _lines);
-        wattrset((WINDOW *) _scoreWin, COLOR_PAIR(19));
-        mvwprintw(_scoreWin, 5, 7, "%6d", _level);
-        wrefresh(_scoreWin);
         return;
-    }
-
-    void Ui::CompletedLinesAnimation(const LinesCompleted &completed)
-    {
-        wattrset((WINDOW *) _wellWin, COLOR_PAIR(22));
-        for (int i = 0; i < 6; ++i)
-        {
-            for (int k = 0; k < 4; ++k)
-            {
-                if (completed._completed[k])
-                {
-                    wmove(_wellWin, completed._baseY + k, 0);
-                    whline(_wellWin, i % 2 ? ' ' : ':', WellWidth * 2);
-                }
-                wrefresh(_wellWin);
-                usleep(static_cast<__useconds_t>((500000 / 6) >> _speed));
-            }
-        }
     }
 
     void Ui::Play(BlockChooser *bc)
@@ -709,11 +395,8 @@ namespace Bastet
         _points = 0;
         _lines = 0;
         _move_log.clear();
-        BOOST_FOREACH(ColorWellLine &a, _colors) a.assign(0);
-        RedrawStatic();
         RedrawScore();
         Well w;
-        nodelay(stdscr, TRUE);
 
         Queue q = bc->GetStartingQueue();
         if (q.size() == 1) //no block preview
@@ -804,7 +487,6 @@ namespace Bastet
             _socket->send(R"({"type":"send_me_a_key"})");
             return *(int *) _socket->recv(4).c_str();
         }
-        return getch();
     }
 
     void Ui::SetSocket(JsonSocket *sock)
